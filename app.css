@@ -324,3 +324,4 @@ p { margin: 0; }
 @media (min-width: 861px) { .sheet { bottom: auto; top: 50%; transform: translate(-50%, -50%); border-radius: 24px; } }
 @media (max-width: 560px) { .install-card { flex-wrap: wrap; } .install-card > div { flex: 1 1 calc(100% - 64px) !important; } .install-card .btn { flex: 1; } }
 .btn { white-space: nowrap; }
+.saved[hidden] { display: none; }
