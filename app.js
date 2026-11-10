@@ -103,14 +103,14 @@
   const STEPS = [
     { t: 'Your business', part: PART1, d: 'Phone carriers require every business that texts customers to register first. Approval usually takes 1 to 2 weeks, so we start this right away.' },
     { t: 'Contact and website', part: PART1, d: 'Who carriers can contact, and a quick check of your website. Carriers look at it during review.' },
-    { t: 'Phone and leads', part: PART1, d: 'Which number your agent texts from and where your customers come from.' },
+    { t: 'Phone and leads', part: PART1, d: 'Your new texting number and where your customers come from.' },
     { t: 'Your work', part: 'Set up your agent', d: 'What you do, where you do it and when you\'re open.' },
     { t: 'Your agent', part: 'Set up your agent', d: 'How it should sound and when to hand leads to you.' },
     { t: 'Review and submit', part: 'Almost done', d: 'Take a quick look. You can change anything later.' }
   ];
-  const REG_FIELDS = ['no_ein', 'legal_name', 'dba', 'business_type', 'ein', 'ein_date', 'ein_letter_name', 'business_address', 'website', 'trade', 'contact_name', 'contact_title', 'contact_email', 'contact_phone', 'authorized', 'privacy_has', 'privacy_url', 'terms_has', 'terms_url', 'web_editor_name', 'web_editor_email', 'number_choice', 'forward_missed', 'phone_carrier', 'forwarding_login', 'rings', 'lead_sources', 'missed_per_week'];
+  const REG_FIELDS = ['no_ein', 'legal_name', 'dba', 'business_type', 'ein', 'ein_date', 'ein_letter_name', 'business_address', 'website', 'trade', 'contact_name', 'contact_title', 'contact_email', 'contact_phone', 'authorized', 'privacy_has', 'privacy_url', 'terms_has', 'terms_url', 'web_editor_name', 'web_editor_email', 'phone_carrier', 'rings', 'lead_sources', 'missed_per_week'];
   const WORK_FIELDS = ['services', 'service_area', 'weekday_open', 'weekday_close', 'saturday', 'sunday', 'avg_job_value', 'current_tools', 'agent_name', 'tone', 'always_mention', 'never_say', 'handoff', 'after_hours'];
-  const RERENDER = ['no_ein', 'number_choice', 'privacy_has', 'terms_has', 'trade'];
+  const RERENDER = ['no_ein', 'privacy_has', 'terms_has', 'trade'];
   let draft = {};
   let saveTimer;
   let pendingFile = null; // EIN letter picked but not uploaded yet
@@ -204,19 +204,14 @@
         ${input('web_editor_name', 'Who can edit your website?', { opt: true, ph: 'Name' })}
         ${input('web_editor_email', 'Their email', { opt: true, type: 'email', ph: 'name@email.com' })}
       </div>`;
-    if (n === 3) {
-      const isNew = draft.number_choice === 'new';
-      return `<div class="grid">
-        ${choices('number_choice', 'Which number should your agent text from?', [['existing', 'Our business number', 'Text enable the number customers already have'], ['new', 'A new local number', 'Get a new number just for texting']], { req: true, two: true })}
-        ${isNew ? `${choices('forward_missed', 'Forward missed calls from your main line so they trigger a text back?', [['yes', 'Yes'], ['no', 'No']], { two: true })}
-          ${input('phone_carrier', 'Your phone carrier', { opt: true, ph: 'Verizon, AT&T, T Mobile...' })}
-          ${input('forwarding_login', 'Who can log in to change call forwarding?', { opt: true, ph: 'Name' })}` : ''}
+    if (n === 3) return `<div class="grid">
+        <div class="note full" style="margin:0"><span>📱</span><div><b>We'll set you up with a new local number just for texting.</b> You keep your current number for calls. When you miss a call, it forwards to your new number and your agent texts the customer back right away.</div></div>
+        ${select('phone_carrier', 'Who is your phone carrier?', ['Verizon', 'AT&T', 'T Mobile', 'Other', 'Not sure'], { req: true, hint: 'So we can walk you through turning on missed call forwarding.' })}
         ${select('rings', 'How many rings before a call counts as missed?', ['2', '3', '4', '5', '6'], { def: '4' })}
         ${select('missed_per_week', 'Roughly how many calls do you miss in a week?', ['0 to 5', '6 to 15', '16 to 30', 'More than 30', 'Not sure'], { req: true })}
         ${multi('lead_sources', 'Where do most new customers reach you?', ['Phone calls', 'Texts', 'Website form', 'Google', 'Facebook', 'Referrals', 'Other'])}
         <div class="note full" style="margin:0"><span>📨</span><div>When you hit Continue, your registration details go straight to Pat so we can submit them today.</div></div>
       </div>`;
-    }
     if (n === 4) {
       const sug = TRADES[draft.trade] || [];
       const cur = (draft.services || '').split(',').map(s => s.trim().toLowerCase());
@@ -254,7 +249,7 @@
       ${sec('Your business', 1, noEin ? [['Registration', 'Sole proprietor, no EIN'], ['Name customers know', draft.dba], ['Address', draft.business_address], ['Website', draft.website], ['Industry', draft.trade]]
         : [['Legal name', draft.legal_name], ['Known as', draft.dba], ['Type', draft.business_type], ['EIN', draft.ein], ['EIN issued', draft.ein_date], ['EIN letter', draft.ein_letter_name || (pendingFile && pendingFile.name)], ['Address', draft.business_address], ['Website', draft.website], ['Industry', draft.trade]])}
       ${sec('Contact and website', 2, [['Contact', [draft.contact_name, draft.contact_title].filter(Boolean).join(', ')], ['Email', draft.contact_email], ['Mobile', draft.contact_phone], ['Privacy page', [yn(draft.privacy_has), draft.privacy_url].filter(Boolean).join(', ')], ['Terms page', [yn(draft.terms_has), draft.terms_url].filter(Boolean).join(', ')], ['Website editor', [draft.web_editor_name, draft.web_editor_email].filter(Boolean).join(', ')]])}
-      ${sec('Phone and leads', 3, [['Texts from', draft.number_choice === 'new' ? 'A new local number' : 'Our business number'], ['Forward missed calls', draft.number_choice === 'new' ? yn(draft.forward_missed) : ''], ['Rings before missed', draft.rings || '4'], ['Missed calls a week', draft.missed_per_week], ['Customers come from', draft.lead_sources]])}
+      ${sec('Phone and leads', 3, [['Texts from', 'A new local number'], ['Phone carrier', draft.phone_carrier], ['Rings before missed', draft.rings || '4'], ['Missed calls a week', draft.missed_per_week], ['Customers come from', draft.lead_sources]])}
       ${sec('Your work', 4, [['Services', draft.services], ['Area', draft.service_area], ['Hours', Data.hoursText(draft)], ['Average job', draft.avg_job_value], ['Tools now', draft.current_tools]])}
       ${sec('Your agent', 5, [['Name', draft.agent_name || 'Riley'], ['Sounds', tone], ['Always mention', draft.always_mention], ['Never say', draft.never_say], ['Tell me by', { text: 'Text', email: 'Email', both: 'Text and email' }[draft.handoff]], ['After hours', draft.after_hours === 'book' ? 'Answer and book' : 'Answer and hold']])}
     </div>`;
@@ -728,7 +723,7 @@
   /* ---------- Your info drawer ---------- */
   function openInfo() {
     const p = Data.profile();
-    const rows = [['Business', p.business_name], ['Name', p.owner_name], ['Phone', p.phone], ['Email', p.email], ['Website', p.website], ['Services', p.services], ['Area', p.service_area], ['Hours', Data.hoursText(p)], ['Average job', p.avg_job_value], ['Agent name', p.agent_name || 'Riley'], ['Sounds', p.tone], ['Always mention', p.always_mention], ['Never say', p.never_say], ['Texting from', p.number_choice === 'new' ? 'A new local number' : 'Your business number'], ['Registration', p.registration_sent_at ? 'Sent to Pat' : 'Not sent yet']];
+    const rows = [['Business', p.business_name], ['Name', p.owner_name], ['Phone', p.phone], ['Email', p.email], ['Website', p.website], ['Services', p.services], ['Area', p.service_area], ['Hours', Data.hoursText(p)], ['Average job', p.avg_job_value], ['Agent name', p.agent_name || 'Riley'], ['Sounds', p.tone], ['Always mention', p.always_mention], ['Never say', p.never_say], ['Texting from', 'A new local number'], ['Registration', p.registration_sent_at ? 'Sent to Pat' : 'Not sent yet']];
     const wrap = document.createElement('div');
     wrap.innerHTML = `<div class="drawer-bg"></div><aside class="drawer" role="dialog" aria-label="Your info">
       <div class="card-head"><h2 style="font-size:22px">Your info</h2><button class="btn ghost small" data-x>Close</button></div>
