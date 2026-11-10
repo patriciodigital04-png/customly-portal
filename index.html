@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Customly Portal</title>
+  <meta name="description" content="Your Customly client portal.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M23.8 8.2A11 11 0 1 0 23.8 23.8' fill='none' stroke='%230284C7' stroke-width='3.2' stroke-linecap='round'/%3E%3Cpath d='M20.2 11.8A6 6 0 1 0 20.2 20.2' fill='none' stroke='%2338BDF8' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%230284C7'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Customly">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Netlify reads these hidden forms at deploy time so it knows the field names.
+       app.js sends the real submissions. Find them in Netlify > Forms. -->
+  <form name="ein_letter" data-netlify="true" netlify-honeypot="bot_field" enctype="multipart/form-data" hidden>
+    <input name="bot_field"><input name="client_id"><input name="legal_name"><input name="business_name"><input type="file" name="ein_letter">
+  </form>
+  <form name="texting_registration" data-netlify="true" netlify-honeypot="bot_field" enctype="multipart/form-data" hidden>
+    <input name="bot_field"><input name="client_id"><input name="business_name"><input name="no_ein"><input name="legal_name"><input name="dba"><input name="business_type"><input name="ein"><input name="ein_date"><input name="ein_letter_name"><input name="business_address"><input name="website"><input name="trade"><input name="contact_name"><input name="contact_title"><input name="contact_email"><input name="contact_phone"><input name="authorized"><input name="privacy_has"><input name="privacy_url"><input name="terms_has"><input name="terms_url"><input name="web_editor_name"><input name="web_editor_email"><input name="number_choice"><input name="forward_missed"><input name="phone_carrier"><input name="forwarding_login"><input name="rings"><input name="lead_sources"><input name="missed_per_week"><input type="file" name="ein_letter">
+  </form>
+  <form name="onboarding" data-netlify="true" netlify-honeypot="bot_field" enctype="multipart/form-data" hidden>
+    <input name="bot_field"><input name="client_id"><input name="business_name"><input name="no_ein"><input name="legal_name"><input name="dba"><input name="business_type"><input name="ein"><input name="ein_date"><input name="ein_letter_name"><input name="business_address"><input name="website"><input name="trade"><input name="contact_name"><input name="contact_title"><input name="contact_email"><input name="contact_phone"><input name="authorized"><input name="privacy_has"><input name="privacy_url"><input name="terms_has"><input name="terms_url"><input name="web_editor_name"><input name="web_editor_email"><input name="number_choice"><input name="forward_missed"><input name="phone_carrier"><input name="forwarding_login"><input name="rings"><input name="lead_sources"><input name="missed_per_week"><input name="services"><input name="service_area"><input name="weekday_open"><input name="weekday_close"><input name="saturday"><input name="sunday"><input name="avg_job_value"><input name="current_tools"><input name="agent_name"><input name="tone"><input name="always_mention"><input name="never_say"><input name="handoff"><input name="after_hours">
+  </form>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
