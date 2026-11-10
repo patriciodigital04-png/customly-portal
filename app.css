@@ -325,3 +325,13 @@ p { margin: 0; }
 @media (max-width: 560px) { .install-card { flex-wrap: wrap; } .install-card > div { flex: 1 1 calc(100% - 64px) !important; } .install-card .btn { flex: 1; } }
 .btn { white-space: nowrap; }
 .saved[hidden] { display: none; }
+
+/* notifications + take over */
+.bell { position: relative; }
+.bell-count { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+.notif.unread { background: var(--sky-wash); }
+.notif.unread .name::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--sky-deep); flex: none; }
+.takeover { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; background: var(--sky-wash); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.takeover.ask { background: var(--amber-soft); color: var(--amber); }
+@media (max-width: 860px) { .takeover, .paused { padding: 10px 16px; } }
+@media (max-width: 480px) { .pill .long { display: none; } .top { gap: 8px; } .top .brand { font-size: 17px; } }

@@ -168,7 +168,7 @@ window.CUSTOMLY = {
         estimateAt: null, jobAt: null, wonValue: 0, agentPaused: false, messages: []
       };
       let t = t0;
-      const say = (from, text, gap) => { t = Math.min(t + (gap || (1 + r() * 4)) * 60000, now - 60000); lead.messages.push({ from, text, at: t }); };
+      const say = (from, text, gap) => { t = Math.min(t + (gap || (1 + r() * 4)) * 60000, now - 60000); lead.messages.push({ from, text: text.replace(/\.\./g, '.'), at: t }); };
 
       // Opening
       if (source === 'Missed call text back') {
@@ -196,6 +196,11 @@ window.CUSTOMLY = {
       const alt = est + DAY + 2 * 3600000;
       if (status === 'Contacted' && r() < 0.4) {
         say('agent', `Got it. ${owner} does free estimates. Would ${slotLabel(est)} or ${slotLabel(alt)} work for you?`, 0.1);
+        if (r() < 0.6) {
+          say('customer', `Before I pick a time, can I talk to ${owner} directly? I have a few questions about the job.`);
+          say('agent', `Of course! I let ${owner} know and they'll reach out to you shortly.`, 0.1);
+          lead.needsOwner = true;
+        }
         leads.push(lead); continue;
       }
       say('agent', `Got it. ${owner} does free estimates. Would ${slotLabel(est)} or ${slotLabel(alt)} work for you?`, 0.1);
@@ -283,6 +288,8 @@ window.CUSTOMLY = {
     markSubmitted(sentOk) { const s = readStore(); s.profile.submitted_at = Date.now(); s.profile.sent = !!sentOk; writeStore(s); },
     markSent() { const s = readStore(); if (s.profile) { s.profile.sent = true; writeStore(s); } },
     reset() { try { localStorage.removeItem(KEY); } catch (e) {} },
+    notifSeen() { return readStore().notifSeen || 0; },
+    markNotifSeen() { const s = readStore(); s.notifSeen = Date.now(); writeStore(s); },
     hoursText, services, money, slotLabel, stats,
 
     async leads() {

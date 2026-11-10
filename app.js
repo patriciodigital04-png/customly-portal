@@ -19,6 +19,7 @@
     send: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
     back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
     phone: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 8v6M9 11h6"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
     user: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>'
   };
 
@@ -415,23 +416,81 @@
     const p = Data.profile();
     const leads = await Data.leads();
     const newCount = leads.filter(l => l.status === 'New').length;
-    const statusPill = Data.config.live && !Data.isDemo ? '<span class="pill live">Live</span>' : '<span class="pill" title="Everything here is sample data built from your answers until your agent goes live.">Preview: sample data</span>';
+    const unread = notifications(leads).filter(e => e.at > Data.notifSeen()).length;
+    const statusPill = Data.config.live && !Data.isDemo ? '<span class="pill live">Live</span>' : '<span class="pill" title="Everything here is sample data built from your answers until your agent goes live.">Preview<span class="long">: sample data</span></span>';
     app.innerHTML = `<div class="shell">
       <aside class="side">${brand()}
         <nav class="nav">${NAV.map(([k, t, ic]) => `<a href="#/${k}" class="${page === k ? 'on' : ''}">${ic}${t}${k === 'leads' && newCount ? `<span class="badge">${newCount}</span>` : ''}</a>`).join('')}</nav>
         <div class="side-foot"><div class="biz">${esc(p.business_name)}</div><button class="link" data-info style="font-size:14px">Your info</button></div>
       </aside>
       <div class="main">
-        <header class="top">${brand()}<h1>${TITLES[page]}</h1><div style="display:flex;gap:12px;align-items:center">${statusPill}<button class="btn ghost small" data-info aria-label="Your info" style="width:40px;padding:0">${I.user}</button></div></header>
+        <header class="top">${brand()}<h1>${TITLES[page]}</h1><div style="display:flex;gap:12px;align-items:center">${statusPill}<button class="btn ghost small bell" data-notifs aria-label="Notifications" style="width:40px;padding:0">${I.bell}${unread ? `<span class="bell-count">${unread}</span>` : ''}</button><button class="btn ghost small" data-info aria-label="Your info" style="width:40px;padding:0">${I.user}</button></div></header>
         <main class="content"><h1 class="page-title">${TITLES[page]}</h1><div id="page"></div></main>
       </div>
       <nav class="bottom">${NAV.map(([k, t, ic]) => `<a href="#/${k}" class="${page === k ? 'on' : ''}">${ic}${t === 'Conversations' ? 'Chats' : t}</a>`).join('')}</nav>
     </div>`;
     $$('[data-info]').forEach(b => b.addEventListener('click', openInfo));
+    $$('[data-notifs]').forEach(b => b.addEventListener('click', () => openNotifs(leads)));
     const top = $('.top'); const onScroll = () => top && top.classList.toggle('scrolled', scrollY > 4);
     window.onscroll = onScroll;
     const el = $('#page');
     ({ home: pageHome, conversations: pageConvos, leads: pageLeads, jobs: pageJobs, try: pageTry })[page](el, leads, p, arg);
+  }
+
+  /* ---------- Notifications ---------- */
+  function notifications(leads) {
+    const since = Date.now() - 14 * 86400000; const ev = [];
+    leads.forEach(l => {
+      const last = l.messages[l.messages.length - 1];
+      if (l.needsOwner && !l.agentPaused) {
+        const ask = [...l.messages].reverse().find(m => m.from === 'customer');
+        ev.push({ type: 'needs', id: l.id, at: ask ? ask.at : l.createdAt, title: `${l.name} wants to talk to you`, body: ask ? ask.text : 'Tap to take over the conversation.' });
+      }
+      if (l.status === 'New') ev.push({ type: 'new', id: l.id, at: l.createdAt, title: `New lead: ${l.name}`, body: `${l.service} · ${l.source}. Your agent is on it.` });
+      if (l.estimateAt) {
+        const b = l.messages.find(m => m.from === 'agent' && /^You're booked for/.test(m.text));
+        if (b) ev.push({ type: 'booked', id: l.id, at: b.at, title: `Estimate booked with ${l.name}`, body: `${l.service} on ${Data.slotLabel(l.estimateAt)}` });
+      }
+    });
+    return ev.filter(e => e.at >= since).sort((a, b) => b.at - a.at).slice(0, 25);
+  }
+  const NICON = { needs: ['🙋', 'var(--amber-soft)'], new: ['✨', 'var(--sky-soft)'], booked: ['📅', 'var(--green-soft)'] };
+  const pushSupported = () => 'Notification' in window && 'serviceWorker' in navigator;
+  async function phoneNotify(title, body, url, tag) {
+    if (!pushSupported() || Notification.permission !== 'granted') return false;
+    const opts = { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: tag || 'customly', data: { url } };
+    try { const reg = await navigator.serviceWorker.ready; await reg.showNotification(title, opts); return true; }
+    catch (e) { try { new Notification(title, opts); return true; } catch (x) { return false; } }
+  }
+  async function enablePhoneAlerts(sample) {
+    if (isIOS() && !isStandalone()) { toast('First add Customly to your home screen, then turn alerts on from there.'); openInstallHelp(); return; }
+    if (!pushSupported()) { toast('This browser can\'t show alerts. Try Chrome or Safari.'); return; }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Alerts are off. You can turn them on in your phone settings.'); return; }
+    const ok = await phoneNotify(sample ? sample.title : 'Alerts are on', sample ? sample.body + ' Tap to take over.' : 'You\'ll hear from us when a new lead comes in.', sample ? '#/conversations/' + sample.id : '#/home', 'customly-test');
+    toast(ok ? 'Alerts are on. Check your notifications.' : 'Alerts are on');
+  }
+  function openNotifs(leads) {
+    const ev = notifications(leads);
+    const seen = Data.notifSeen();
+    const perm = pushSupported() ? Notification.permission : 'unsupported';
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `<div class="drawer-bg"></div><aside class="drawer" role="dialog" aria-label="Notifications">
+      <div class="card-head"><h2 style="font-size:22px">Notifications</h2><button class="btn ghost small" data-x>Close</button></div>
+      <div class="note" style="margin-bottom:16px;align-items:center"><span>🔔</span><div style="flex:1">${perm === 'granted' ? '<b>Phone alerts are on.</b> You\'ll get a buzz for new leads, booked estimates and anytime a customer asks for you.' : '<b>Get a buzz on your phone</b> when a new lead comes in or a customer asks for you. Tap the alert to jump in.'}</div>
+        <button class="btn small" id="alerts" style="flex:none">${perm === 'granted' ? 'Send a test' : 'Turn on'}</button></div>
+      ${ev.length ? `<div class="list">${ev.map(e => `<a class="item notif ${e.at > seen ? 'unread' : ''}" href="#/conversations/${e.id}" data-x>
+        <span class="avatar" style="background:${NICON[e.type][1]}">${NICON[e.type][0]}</span>
+        <span class="meta"><span class="name">${esc(e.title)}</span><span class="sub" style="white-space:normal">${esc(e.body)}</span></span>
+        <span class="right"><span>${when(e.at)}</span>${e.type === 'needs' ? '<span class="tag st-Booked">Take over</span>' : ''}</span></a>`).join('')}</div>`
+        : '<div class="empty">No notifications yet.</div>'}
+    </aside>`;
+    document.body.appendChild(wrap);
+    Data.markNotifSeen(); $$('.bell-count').forEach(b => b.remove());
+    const close = () => wrap.remove();
+    wrap.querySelector('.drawer-bg').addEventListener('click', close);
+    $$('[data-x]', wrap).forEach(b => b.addEventListener('click', close));
+    $('#alerts', wrap).addEventListener('click', () => enablePhoneAlerts(ev.find(e => e.type === 'needs') || ev[0]));
   }
 
   /* ---------- Home ---------- */
@@ -551,17 +610,23 @@
         <span class="avatar">${initials(l.name)}</span><div style="flex:1;min-width:0"><div style="font-weight:600">${esc(l.name)} <span class="tag st-${l.status}">${l.status}</span></div>
         <div class="muted" style="font-size:14px">${esc(l.service)} · ${esc(l.source)} · ${esc(l.phone)}</div></div>
         <div class="muted" style="font-size:14px;text-align:right">Job value<br><b style="color:var(--ink)">${Data.money(l.wonValue || l.value)}</b></div></div>
-      ${l.agentPaused ? `<div class="paused"><span>Agent paused. You're handling this one.</span><button class="btn ghost small" id="resume">Turn agent back on</button></div>` : ''}
+      ${l.agentPaused ? `<div class="paused"><span>You took over. Your agent is paused on this one.</span><button class="btn ghost small" id="resume">Hand back to agent</button></div>`
+        : `<div class="takeover ${l.needsOwner ? 'ask' : ''}"><span>${l.needsOwner ? `🙋 ${esc(firstName(l.name))} asked to talk to you.` : 'Your agent is handling this conversation.'}</span><button class="btn small" id="takeover">Take over</button></div>`}
       <div class="thread-body" id="tb">${bubbles}</div>
       <form class="composer" id="reply"><input placeholder="Reply as ${esc(firstName(p.owner_name) || 'you')}..." aria-label="Reply"><button class="btn" aria-label="Send">${I.send}</button></form>
-      <div class="muted" style="font-size:12px;padding:0 16px 12px;background:var(--white)">Replying here pauses your agent on this conversation.</div>`;
+      <div class="muted" style="font-size:12px;padding:0 16px 12px;background:var(--white)">Replying here takes over and pauses your agent on this conversation.</div>`;
     const tb = $('#tb'); tb.scrollTop = tb.scrollHeight;
     $('#reply').addEventListener('submit', async (e) => {
       e.preventDefault(); const inp = e.target.querySelector('input'); const v = inp.value.trim(); if (!v) return;
       await Data.reply(l.id, v); toast('Sent. Your agent is paused on this conversation.');
       const leads = await Data.leads(); drawThread(leads.find(x => x.id === l.id), p);
     });
-    const r = $('#resume'); if (r) r.addEventListener('click', async () => { Data.setPaused(l.id, false); toast('Agent is back on'); const leads = await Data.leads(); drawThread(leads.find(x => x.id === l.id), p); });
+    const r = $('#resume'); if (r) r.addEventListener('click', async () => { Data.setPaused(l.id, false); toast('Your agent is back on'); const leads = await Data.leads(); drawThread(leads.find(x => x.id === l.id), p); });
+    const tk = $('#takeover'); if (tk) tk.addEventListener('click', async () => {
+      Data.setPaused(l.id, true); toast('You took over. Your agent is paused.');
+      const leads = await Data.leads(); drawThread(leads.find(x => x.id === l.id), p);
+      $('#reply input').focus();
+    });
   }
 
   /* ---------- Leads ---------- */
@@ -627,12 +692,14 @@
     async function send(text) {
       if (busy || !text.trim()) return; busy = true;
       if (!lead) lead = { id: 'TEST', test: true, name: 'Your test', phone: '555 0100', service: svc[0], source: 'Inbound text', status: 'New', createdAt: Date.now(), value: parseFloat(String(p.avg_job_value).replace(/[^0-9.]/g, '')) || 1500, address: '', afterHours: false, reviewSent: false, reengaged: false, estimateAt: null, jobAt: null, wonValue: 0, messages: [], st: { stage: 'start' } };
+      const isFirst = !lead.messages.length;
       lead.messages.push({ from: 'customer', text: text.trim(), at: Date.now() });
       Data.upsertTestLead(lead); draw();
+      if (isFirst) phoneNotify('New lead: text from a customer', `"${text.trim()}" Your agent is replying. Tap to take over.`, '#/conversations/TEST', 'customly-TEST');
       const typing = document.createElement('div'); typing.className = 'typing'; typing.innerHTML = '<i></i><i></i><i></i>';
       pb.appendChild(typing); pb.scrollTop = pb.scrollHeight;
       await new Promise(r => setTimeout(r, matchMedia('(prefers-reduced-motion: reduce)').matches ? 200 : 900 + Math.random() * 600));
-      const reply = agentReply(text, lead, p);
+      const reply = agentReply(text, lead, p).replace(/\.\./g, '.');
       lead.messages.push({ from: 'agent', text: reply, at: Date.now() });
       if (lead.status === 'New') lead.status = 'Contacted';
       if (lead.st.justBooked) {
@@ -640,6 +707,7 @@
         const how = { text: 'by text', email: 'by email', both: 'by text and email' }[p.handoff] || 'by text';
         lead.messages.push({ from: 'system', text: `Summary sent to you ${how}: new estimate for ${lead.service.toLowerCase()} on ${Data.slotLabel(lead.estimateAt)}.`, at: Date.now() });
         toast('Estimate booked. It\'s in your Leads and Jobs.');
+        phoneNotify('Estimate booked', `Your test customer booked ${Data.slotLabel(lead.estimateAt)}. Tap to see the conversation.`, '#/conversations/TEST', 'customly-TEST-booked');
       }
       Data.upsertTestLead(lead); busy = false; draw();
     }
